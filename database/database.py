@@ -1,94 +1,59 @@
 import psycopg2
-
-# Will be changed in Future
+import pandas as pd
 from database.config import config
 
-"""
-    --------------> for future connection to database
+# Those are Structure for Database which can be changed. There are Table names, Column names, Schema names
+# and e.t.c
 
-    connection = psycopg2.connect(user="username",
-                                  password="password",
-                                  host="127.0.0.1",
-                                  port="5432",
-                                  database="postgres")
-                                  
-select count(schema_name) check_existence
-from information_schema.schemata
-where schema_name = 'schema_name';
 
-"""
-
-schema_name = 'retail_demetre'  # Schema Name
+schema_name = 'retail_data'  # Schema Name
 
 # Table Names Which has to be created in Schema
 invoice_table, product_table, invoice_product_table = 'invoice', 'product', 'invoice_product'
 
 # Invoice Table Column Names
 invoice_columns = [['invoice_no', 'varchar(7)'], ['invoice_date', 'date'],
-                   ['customer_id', 'numeric(6)'], ['country', 'varchar(50)']]
+                   ['customer_id', 'varchar(8)'], ['country', 'varchar(50)']]
 
 # Product Table Column Names
-product_columns = [['stock_code', 'varchar(10)'], ['description', 'varchar(100)'],
-                   ['price', 'numeric(3,2)']]
+product_columns = [['stock_code', 'varchar(20)'], ['description', 'varchar(250)'],
+                   ['price', 'numeric(5,2)']]
 
 # Invoice_Product Table Column Names
-invoice_product_columns = [['stock_code', 'varchar(10)'], ['invoice_no', 'varchar(7)'],
-                           ['quantity', 'numeric(3)']]
+invoice_product_columns = [['invoice_no', 'varchar(7)'], ['stock_code', 'varchar(20)'],
+                           ['quantity', 'numeric(8)']]
 
-username, password, host, port, database = "postgres", "jr1kpoh2", "127.0.0.1", "5432", "postgres"
+# File name from which data has to be read
+file_name = "data/shortData/online_retail_II.xlsx"
 
 
 class Database:
     def __init__(self):
         # Class Constructor
         try:
-            # params = config()
+            params = config()  # Get parameters for Connection
 
-            # self.conn = psycopg2.connect(**params)  # Postgres Database
-            self.conn = psycopg2.connect(user="postgres",
-                                         password="jr1kpoh2",
-                                         host="127.0.0.1",
-                                         port="5432",
-                                         database="postgres")
+            self.conn = psycopg2.connect(**params)  # Postgres Database
             self.curs = self.conn.cursor()  # Cursor Object for Database Operations
-            self.initialize_database()
 
+            # Check if schema like that exists, if not then create and add data
+            initQuery = f"""select count(schema_name) check_existence
+                           from information_schema.schemata
+                           where schema_name = '{schema_name}' """
+            self.curs.execute(initQuery)  # Execute Command
+
+            check = self.curs.fetchone()  # Get Data
+            if check[0] == 0:
+                self.initialize_database()
 
         except psycopg2.Error as err:
             print(f'Connection Error: {err}')
-
-    def add_record(self, crash):
-
-        # Form the Statement
-        comm = f""" insert into {self.table_name}("""
-        for col in self.table_columns:
-            comm += f"{col}, "
-        else:
-            comm = comm[:-2] + ")\n values ( "
-        comm = comm[:-1] + crash.year + ', '
-        comm = comm[:-1] + '"' + crash.accident + '", '
-        comm = comm[:-1] + '"' + crash.time + '", '
-        comm = comm[:-1] + '"' + crash.weather + '", '
-        comm = comm[:-1] + '"' + crash.surface + '")'
-
-        self.curs.execute(comm)  # Execute Command
-        self.conn.commit()  # Commit Changes
 
     def select(self, query):
         # Execute select in database
         return self.curs.execute(query).fetchall()
 
     def initialize_database(self):
-        #initQuery = f"""
-        #select count(schema_name) check_existence
-        #from information_schema.schemata
-        #where schema_name = '{schema_name}';
-        #"""
-
-        initQuery = 'select 2'
-        checkSchema = self.curs.execute(initQuery)  # Execute Command
-
-        print(checkSchema)
 
         # Create Schema and Tables
         query = f"""
@@ -108,11 +73,65 @@ class Database:
         );
         
         CREATE TABLE {schema_name}.{invoice_product_table} (
-            {invoice_product_columns[0][0]}  {invoice_product_columns[0][1]} REFERENCES {schema_name}.{product_table} ({
-        product_columns[0][0]}),
-            {invoice_product_columns[1][0]}  {invoice_product_columns[1][1]} REFERENCES {schema_name}.{invoice_table} ({
-        invoice_columns[0][0]}),
+            {invoice_product_columns[0][0]}  {invoice_product_columns[0][1]} REFERENCES {schema_name}.{invoice_table} 
+        ({invoice_columns[0][0]}),
+            {invoice_product_columns[1][0]}  {invoice_product_columns[1][1]} REFERENCES {schema_name}.{product_table} 
+        ({product_columns[0][0]}),
             {invoice_product_columns[2][0]}  {invoice_product_columns[2][1]} 
         );
-        
+
         """
+
+        self.curs.execute(query)  # Execute Command
+        self.conn.commit()  # Commit Changes
+
+        self.add_data_from_file()  # Add Data in Database
+
+    def add_data_from_file(self):
+        data = pd.read_excel(file_name,
+                             parse_dates=['InvoiceDate'],
+                             converters={'StockCode': lambda x: str(x),
+                                         'Invoice': lambda y: str(y),
+                                         'Customer ID': lambda z: str(z)})
+        try:
+            for i in range(0, len(data)):
+                # Check existence of Invoice, if it is new then insert into Database
+                check_invoice = f""" select count({invoice_columns[0][0]}) 
+                                    from {schema_name}.{invoice_table} a
+                                    where a.{invoice_columns[0][0]} = '{data['Invoice'][i]}'"""
+                self.curs.execute(check_invoice)  # Execute Command
+
+                if self.curs.fetchone()[0] == 0:
+                    # Form Query
+                    insert_invoice = f"""
+                                    insert into {schema_name}.{invoice_table}
+                                    values(%s,%s,%s,%s) """
+                    self.curs.execute(insert_invoice, (data['Invoice'][i], data['InvoiceDate'][i],
+                                                       data['Customer ID'][i], data['Country'][i]))  # Execute
+
+                # Check if product like that exists in Database
+                check_product = f"""
+                        select count({product_columns[0][0]}) 
+                        from {schema_name}.{product_table} a
+                        where a.{product_columns[0][0]} = '{data['StockCode'][i]}'"""
+                self.curs.execute(check_product)
+
+                # If there is not Product like that Insert into Database
+                if self.curs.fetchone()[0] == 0:
+                    insert_product = f"""
+                                    insert into {schema_name}.{product_table}
+                                    values(%s,%s,%s) """
+
+                    self.curs.execute(insert_product, (data['StockCode'][i],
+                                                       data['Description'][i], data['Price'][i]))  # Execute Command
+
+                # Query for insert into insert_invoice_product
+                insert_invoice_product = f"""
+                                insert into {schema_name}.{invoice_product_table}
+                                values('{data['Invoice'][i]}','{data['StockCode'][i]}',
+                                {data['Quantity'][i]}) """
+                self.curs.execute(insert_invoice_product)  # Execute Command
+
+            self.conn.commit()  # Commit Changes
+        except psycopg2.Error as err:
+            print(err)
