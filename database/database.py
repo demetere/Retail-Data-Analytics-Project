@@ -17,14 +17,14 @@ invoice_columns = [['invoice_no', 'varchar(7)'], ['invoice_date', 'date'],
 
 # Product Table Column Names
 product_columns = [['stock_code', 'varchar(20)'], ['description', 'varchar(250)'],
-                   ['price', 'numeric(10,3)']]
+                   ['price', 'numeric(10,2)']]
 
 # Invoice_Product Table Column Names
 invoice_product_columns = [['invoice_no', 'varchar(7)'], ['stock_code', 'varchar(20)'],
                            ['quantity', 'numeric(8)']]
 
 # File name from which data has to be read
-file_name = "data/raw/online_retail_II.xlsx"
+file_name = "data/shortData/online_retail_II.xlsx"
 
 
 class Database:
@@ -52,7 +52,8 @@ class Database:
 
     def select(self, query):
         # Execute select in database
-        return self.curs.execute(query).fetchall()
+        self.curs.execute(query)
+        return self.curs.fetchall()
 
     def initialize_database(self):
 
@@ -90,7 +91,6 @@ class Database:
 
     def add_data_from_file(self):
         data = pd.read_excel(file_name,
-                             sheet_name = 'Year 2010-2011',
                              parse_dates=['InvoiceDate'],
                              converters={'StockCode': lambda x: str(x),
                                          'Invoice': lambda y: str(y),
@@ -100,49 +100,43 @@ class Database:
 
         try:
             for i in range(len(data)-1, -1, -1):
+                # Check existence of Invoice, if it is new then insert into Database
+                check_invoice = f""" select count({invoice_columns[0][0]}) 
+                                                        from {schema_name}.{invoice_table} a
+                                                        where a.{invoice_columns[0][0]} = '{data['Invoice'][i]}'"""
+                self.curs.execute(check_invoice)  # Execute Command
 
+                if self.curs.fetchone()[0] == 0:
+                    # Form Query
+                    insert_invoice = f"""
+                                                        insert into {schema_name}.{invoice_table}
+                                                        values(%s,%s,%s,%s) """
+                    self.curs.execute(insert_invoice, (data['Invoice'][i], data['InvoiceDate'][i],
+                                                       data['Customer ID'][i], data['Country'][i]))  # Execute
 
-                if abs(maxDate.date() - data['InvoiceDate'][i].date()).days <= 14:
-                    # Check existence of Invoice, if it is new then insert into Database
-                    check_invoice = f""" select count({invoice_columns[0][0]}) 
-                                        from {schema_name}.{invoice_table} a
-                                        where a.{invoice_columns[0][0]} = '{data['Invoice'][i]}'"""
-                    self.curs.execute(check_invoice)  # Execute Command
+                # Check if product like that exists in Database
+                check_product = f"""
+                                            select count({product_columns[0][0]}) 
+                                            from {schema_name}.{product_table} a
+                                            where a.{product_columns[0][0]} = '{data['StockCode'][i]}'"""
+                self.curs.execute(check_product)
 
-                    if self.curs.fetchone()[0] == 0:
-                        # Form Query
-                        insert_invoice = f"""
-                                        insert into {schema_name}.{invoice_table}
-                                        values(%s,%s,%s,%s) """
-                        self.curs.execute(insert_invoice, (data['Invoice'][i], data['InvoiceDate'][i],
-                                                           data['Customer ID'][i], data['Country'][i]))  # Execute
+                # If there is not Product like that Insert into Database
+                if self.curs.fetchone()[0] == 0:
+                    insert_product = f"""
+                                                        insert into {schema_name}.{product_table}
+                                                        values(%s,%s,%s) """
 
-                    # Check if product like that exists in Database
-                    check_product = f"""
-                            select count({product_columns[0][0]}) 
-                            from {schema_name}.{product_table} a
-                            where a.{product_columns[0][0]} = '{data['StockCode'][i]}'"""
-                    self.curs.execute(check_product)
+                    self.curs.execute(insert_product, (data['StockCode'][i],
+                                                       data['Description'][i], data['Price'][i]))  # Execute Command
 
-                    # If there is not Product like that Insert into Database
-                    if self.curs.fetchone()[0] == 0:
-                        insert_product = f"""
-                                        insert into {schema_name}.{product_table}
-                                        values(%s,%s,%s) """
+                # Query for insert into insert_invoice_product
+                insert_invoice_product = f"""
+                                                    insert into {schema_name}.{invoice_product_table}
+                                                    values('{data['Invoice'][i]}','{data['StockCode'][i]}',
+                                                    {data['Quantity'][i]}) """
+                self.curs.execute(insert_invoice_product)  # Execute Command
+                self.conn.commit()  # Commit Changes
 
-                        self.curs.execute(insert_product, (data['StockCode'][i],
-                                                           data['Description'][i], data['Price'][i]))  # Execute Command
-
-                    # Query for insert into insert_invoice_product
-                    insert_invoice_product = f"""
-                                    insert into {schema_name}.{invoice_product_table}
-                                    values('{data['Invoice'][i]}','{data['StockCode'][i]}',
-                                    {data['Quantity'][i]}) """
-                    self.curs.execute(insert_invoice_product)  # Execute Command
-                    self.conn.commit()  # Commit Changes
-                else:
-                    break
-            else:
-                print('debugger')
         except psycopg2.Error as err:
             print(err)
