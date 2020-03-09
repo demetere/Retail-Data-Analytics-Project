@@ -13,12 +13,17 @@ Project Organization
 ------------
 
     ├── data
-    │   ├── shortData      <- That is shorten version of original data for testing
-    │   ├── raw            <- The original, immutable data dump.
+    │   ├── shortData                   <- That is shorten version of original data for testing
+    │   ├── raw                         <- The original, immutable data dump.
     ├── database
-    │   ├── config.py      <- This file is used to create database parameters for PostgreSql
-    │   ├── database.ini   <- PostgreSql Configuration File 
-    │   ├── database.py    <- Initializator for Database
-    ├── main.py            <- main python file to run the project
-    ├── README.md          <- The top-level README for developers using this project.
+    │   ├── config.py                   <- This file is used to create database parameters for PostgreSql
+    │   ├── database.ini                <- PostgreSql Configuration File 
+    │   ├── database.py                 <- Initializator for Database
+    ├── models
+    │   ├── classification_model.py     <- model implementation for classification task
+    │   ├── predict_model.py            <- prediction model
+    │   ├── regression_model.py         <- model implementation for regression task
+    │   ├── train_model.py              <- train model
+    ├── main.py                         <- main python file to run the project
+    ├── README.md                       <- The top-level README for developers using this project.
 --------

@@ -37,6 +37,7 @@ from sklearn.naive_bayes import GaussianNB
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import KFold, cross_val_score, train_test_split
+import xgboost as xgb
 
 from database.database import Database, schema_name, invoice_table, invoice_product_table, product_table
 
@@ -97,23 +98,6 @@ def classification_model():
         max_purchase['Recency'] = (max_purchase['MaxPurchaseDate'].max() - max_purchase['MaxPurchaseDate']).dt.days
         customers = pd.merge(customers, max_purchase[['Customer ID', 'Recency']], on='Customer ID')
 
-        """
-        # Plot Recenct
-        plot_data = [
-            go.Histogram(
-                x=customers['Recency']
-            )
-        ]
-
-        plot_layout = go.Layout(
-            title = 'Recency'
-        )
-
-        fig = go.Figure(data=plot_data, layout = plot_layout)
-
-        pyoff.iplot(fig)
-
-        """
 
         # Clustering for Recency
         kmeans = KMeans(n_clusters=4)
@@ -133,23 +117,6 @@ def classification_model():
         # Add Frequency column to Customers
         customers = pd.merge(customers, frequency, on='Customer ID')
 
-        # Plot Frequency
-
-        """
-        plot_data = [
-            go.Histogram(
-                x=customers.query('Frequency < 1000')['Frequency']
-            )
-        ]
-
-        plot_layout = go.Layout(
-            title = 'Frequency'
-        )
-
-        fig = go.Figure(data=plot_data, layout = plot_layout)
-        pyoff.iplot(fig)
-
-        """
         # Clustering for Frequency
 
         kmeans = KMeans(n_clusters=4)
@@ -167,24 +134,6 @@ def classification_model():
         revenue = train_date_before.groupby('Customer ID').Revenue.sum().reset_index()
 
         customers = pd.merge(customers, revenue, on='Customer ID')
-
-        # Plot Revenue
-
-        """
-        plot_data = [
-            go.Histogram (
-                x = customers.query('Revenue < 1000')['Revenie']
-            )
-        ]
-
-        plot_layout = go.Layout(
-            title = 'Moonetary Value'
-        )
-
-
-        fig = go.Figure(data=plot_data, layout = plot_layout)
-        pyoff.iplot(fig)
-        """
 
         # Revenue Clusters
         kmeans = KMeans(n_clusters=4)
@@ -204,53 +153,6 @@ def classification_model():
         customers.loc[customers['OverallScore'] > 2, 'Segment'] = 'Mid-Value'
         customers.loc[customers['OverallScore'] > 4, 'Segment'] = 'High-Value'
 
-        # Plot Revenue VS Frequency
-        """
-        graph = customers.query('Revenue < 5000 and Frequency < 2000')
-
-        plot_data = [
-            go.Scatter(
-                x=graph.query("Segment == 'Low-Value'")['Frequency'],
-                y=graph.query("Segment == 'Low-Value")['Revenue'],
-                mode='markers',
-                name='Low',
-                marker=dict(size=7,
-                            line=dict(width=1),
-                            color='blue',
-                            opacity=0.8)
-            ),
-            go.Scatter(
-                x=graph.query("Segment == 'Mid-Value'")['Frequency'],
-                y=graph.query("Segment == 'Mid-Value")['Revenue'],
-                mode='markers',
-                name='Mid',
-                marker=dict(size=9,
-                            line=dict(width=1),
-                            color='green',
-                            opacity=0.5)
-            ),
-            go.Scatter(
-                x=graph.query("Segment == 'High-Value'")['Frequency'],
-                y=graph.query("Segment == 'High-Value")['Revenue'],
-                mode='markers',
-                name='High',
-                marker=dict(size=11,
-                            line=dict(width=1),
-                            color='red',
-                            opacity=0.9)
-            ),
-        ]
-
-        plot_layout = go.Layout(
-            yaxis={'title': 'Revenue'},
-            xaxis={'title': 'Frequency'},
-            title='Segments'
-        )
-
-        fig = go.Figure(data=plot_data, layout=plot_layout)
-        pyoff.iplot(fig)
-
-        """
 
         # Create a Datafram with Custoemr ID and Invoice Date
         day_order = train_date_before[['Customer ID', 'InvoiceDate']]
@@ -315,6 +217,7 @@ def classification_model():
 
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=44)
 
+        """
         # Create an array of models
         models = []
         models.append((('LR', LogisticRegression())))
@@ -322,6 +225,7 @@ def classification_model():
         models.append(('RF', RandomForestClassifier()))
         models.append(('SVC', SVC()))
         models.append(("Dtree", DecisionTreeClassifier()))
+        models.append(("XGB", xgb.XGBClassifier()))
         models.append(("KNN", KNeighborsClassifier()))
 
         # Measure the accuracy
@@ -329,8 +233,16 @@ def classification_model():
             kfold = KFold(n_splits=2, random_state=22)
             result = cross_val_score(model, X_train, y_train, cv=kfold, scoring='accuracy')
             print(name, result)
+        """
 
-        model = LogisticRegression(solver='liblinear', random_state=0).fit(X_train, y_train)
+        xgb_model = xgb.XGBClassifier().fit(X_train, y_train)
+
+        print('Accuracy of XGB classifier on training set: {:.2f}'
+              .format(xgb_model.score(X_train, y_train)))
+        print('Accuracy of XGB classifier on test set: {:.2f}'
+              .format(xgb_model.score(X_test[X_train.columns], y_test)))
+
+
         print('Debugger')
 
     except DataError as err:

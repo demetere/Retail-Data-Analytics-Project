@@ -5,6 +5,16 @@ from database.config import config
 # Those are Structure for Database which can be changed. There are Table names, Column names, Schema names
 # and e.t.c
 
+"""
+    Those File is for Database Implementation. You can edit Schema name, column names,
+    table names and e.t.c, but please do not change the order of columns.
+    
+    It also inserts data in Database, you can choose write the file path in
+    file_name variable.
+    
+    For Successful connection you have to make sure that parameters of database
+    is entered correctly in configuration.ini
+"""
 
 schema_name = 'retail_data'  # Schema Name
 
