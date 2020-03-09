@@ -13,7 +13,7 @@ from database.config import config
     file_name variable.
     
     For Successful connection you have to make sure that parameters of database
-    is entered correctly in configuration.ini
+    is entered correctly in database.ini
 """
 
 schema_name = 'retail_data'  # Schema Name

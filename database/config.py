@@ -3,6 +3,7 @@ from configparser import ConfigParser
 """
     This File is for Creating parameters for actual connection.
     This returns database parameters which is used in database.py
+    to connect postgresql server.
 """
 
 def config(filename='database/database.ini', section='postgresql'):

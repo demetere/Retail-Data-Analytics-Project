@@ -1,17 +1,13 @@
 from __future__ import division
 
 import sys
-from datetime import datetime, date
 
-from pandas import DataFrame
 from pandas.core.base import DataError
-from sklearn import linear_model
-import statsmodels.api as sm
+
 
 # import libraries
 from datetime import datetime, timedelta, date
 import pandas as pd
-from sklearn.metrics import classification_report, confusion_matrix
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
@@ -22,10 +18,6 @@ import warnings
 
 warnings.filterwarnings("ignore")
 
-# import plotly for visualization
-# import plotly.plotly as py
-# import plotly.offline as pyoff
-# import plotly.graph_objs as go
 
 # import machine learning related libraries
 from sklearn.svm import SVC
@@ -103,6 +95,10 @@ def classification_model():
         kmeans = KMeans(n_clusters=4)
         kmeans.fit(customers[['Recency']])
         customers['RecencyCluster'] = kmeans.predict(customers[['Recency']])
+
+
+        # This order_cluster function is function created by me and
+        # it is implemented in the end of the file
 
         # Order Recency Clusters
         customers = order_cluster('RecencyCluster', 'Recency', customers, False)
@@ -218,6 +214,7 @@ def classification_model():
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=44)
 
         """
+        # This is to measure models
         # Create an array of models
         models = []
         models.append((('LR', LogisticRegression())))
