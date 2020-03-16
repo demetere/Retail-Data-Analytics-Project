@@ -15,10 +15,13 @@ Project Organization
     │   ├── database.ini                <- PostgreSql Configuration File 
     │   ├── database.py                 <- Initializator for Database
     ├── models
+    │   ├── regression
+    │   │   ├──arima_model              <- arima model for regression task
+    │   │   ├──prophet_model.py         <- prophet model for regression task
     │   ├── classification_model.py     <- model implementation for classification task
-    │   ├── predict_model.py            <- prediction model
+    │   ├── predict_model.py            <- prediction model, currently empty
     │   ├── regression_model.py         <- model implementation for regression task
-    │   ├── train_model.py              <- train model
+    │   ├── train_model.py              <- train model, currently empty
     ├── main.py                         <- main python file to run the project
     ├── README.md                       <- The top-level README for developers using this project.
 --------

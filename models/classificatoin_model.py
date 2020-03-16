@@ -4,13 +4,9 @@ import sys
 
 from pandas.core.base import DataError
 
-
 # import libraries
 from datetime import datetime, timedelta, date
 import pandas as pd
-import matplotlib.pyplot as plt
-import numpy as np
-import seaborn as sns
 from sklearn.cluster import KMeans
 
 # do not show warnings
@@ -36,6 +32,19 @@ from database.database import Database, schema_name, invoice_table, invoice_prod
 
 def classification_model():
     try:
+        # Order Cluster Method
+        def order_cluster(cluster_field_name, target_field_name, dataframe, ascending):
+            new_cluster_field_name = 'new_' + cluster_field_name
+
+            datafarme_new = dataframe.groupby(cluster_field_name)[target_field_name].mean().reset_index()
+            datafarme_new = datafarme_new.sort_values(by=target_field_name, ascending=ascending).reset_index(drop=True)
+            datafarme_new['index'] = datafarme_new.index
+            dataframe_final = pd.merge(dataframe, datafarme_new[[cluster_field_name, 'index']], on=cluster_field_name)
+            dataframe_final = dataframe_final.drop([cluster_field_name], axis=1)
+            dataframe_final = dataframe_final.rename(columns={'index': cluster_field_name})
+            return dataframe_final
+
+
         database = Database()
 
         #
@@ -98,7 +107,7 @@ def classification_model():
 
 
         # This order_cluster function is function created by me and
-        # it is implemented in the end of the file
+        # it is implemented in the start of the file
 
         # Order Recency Clusters
         customers = order_cluster('RecencyCluster', 'Recency', customers, False)
@@ -199,9 +208,8 @@ def classification_model():
             {'25%': '25_percent', '50%': '50_percent', '75%': '75_percent'}
         ).set_index('index')
 
-        customers_copy['NextPurchaseDayRange'] = 2
-        customers_copy.loc[customers_copy.NextPurchaseDay > 20, 'NextPurchaseDayRange'] = 1
-        customers_copy.loc[customers_copy.NextPurchaseDay > 50, 'NextPurchaseDayRange'] = 0
+        customers_copy['NextPurchaseDayRange'] = 1
+        customers_copy.loc[customers_copy.NextPurchaseDay > 14, 'NextPurchaseDayRange'] = 0
 
         # corr = customers_copy[customers_copy.columns].corr()
         # plt.figure(figsize=(30,20))
@@ -232,15 +240,40 @@ def classification_model():
             print(name, result)
         """
 
-        xgb_model = xgb.XGBClassifier().fit(X_train, y_train)
+        """
+        # Estimate The best params for model
+        
+        from sklearn.model_selection import GridSearchCV
+
+        param_test1 = {
+            'max_depth': range(3, 10, 2),
+            'min_child_weight': range(1, 6, 2)
+        }
+        gsearch1 = GridSearchCV(estimator=xgb.XGBClassifier(),
+                                param_grid=param_test1, scoring='accuracy', n_jobs=-1, iid=False, cv=2)
+        gsearch1.fit(X_train, y_train)
+        print(gsearch1.best_params_)
+        print(gsearch1.best_score_)
+        """
+
+        xgb_model = xgb.XGBClassifier(max_depth=5, min_child_weight=3).fit(X_train, y_train)
 
         print('Accuracy of XGB classifier on training set: {:.2f}'
               .format(xgb_model.score(X_train, y_train)))
         print('Accuracy of XGB classifier on test set: {:.2f}'
               .format(xgb_model.score(X_test[X_train.columns], y_test)))
 
+        prediction = xgb_model.predict(customers_copy.drop('NextPurchaseDayRange', axis=1))
 
-        print('Debugger')
+
+        # Customers who will repurchase within 14 days
+        repurchase_customers = []
+
+        for i in range(0, len(prediction)):
+            if prediction[i] == 1:
+                repurchase_customers.append(customers_copy.columns[i])
+        print('Customers Who will repurchase: ')
+        print("\n".join(repurchase_customers))
 
     except DataError as err:
         print('Data Error ', err)
@@ -257,14 +290,3 @@ def classification_model():
         raise
 
 
-# Order Cluster Method
-def order_cluster(cluster_field_name, target_field_name, dataframe, ascending):
-    new_cluster_field_name = 'new_' + cluster_field_name
-
-    datafarme_new = dataframe.groupby(cluster_field_name)[target_field_name].mean().reset_index()
-    datafarme_new = datafarme_new.sort_values(by=target_field_name, ascending=ascending).reset_index(drop=True)
-    datafarme_new['index'] = datafarme_new.index
-    dataframe_final = pd.merge(dataframe, datafarme_new[[cluster_field_name, 'index']], on=cluster_field_name)
-    dataframe_final = dataframe_final.drop([cluster_field_name], axis=1)
-    dataframe_final = dataframe_final.rename(columns={'index': cluster_field_name})
-    return dataframe_final
