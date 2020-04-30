@@ -32,14 +32,10 @@ Now lets describe the dataset:
 * **Country:** Country name. Nominal. The name of the country where a customer resides.
   
 
+# Solution
+The detailed approaches to those problems and solutions are described in each models jupyter notebook. You can see 
+those files in corresponding directories.
 
-
-
-
-
-**Insturctions**: To run this project you need to run main.py file and configure Database.
- Everything is written in those files and follow instructions to start
-the project
   
 # Project Organization
 Now in this part we will review the project structure and how organized it is. So 
