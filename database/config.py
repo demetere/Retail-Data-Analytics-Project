@@ -1,4 +1,4 @@
-from configparser import ConfigParser
+from configparser import ConfigParser\
 
 """
     This File is for Creating parameters for actual connection.
@@ -6,15 +6,17 @@ from configparser import ConfigParser
     to connect postgresql server.
 """
 
-def config(filename='database/database.ini', section='postgresql'):
+
+def config(filename, section='postgresql'):
     # create a parser
     parser = ConfigParser()
     # read config file
     parser.read(filename)
 
-    # get section, default to postgresql
+    # get section, default to postgres
     db = {}
-    # Checks to see if section (postgresql) parser exists
+
+    # Checks to see if section (postgres) parser exists
     if parser.has_section(section):
         params = parser.items(section)
         for param in params:

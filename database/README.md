@@ -1,21 +1,10 @@
-import psycopg2
-import pandas as pd
-from database.config import config
+# Database Configuration
+This directory is for the database configuration. I will explain every part of this
+class. This class is created dynamically so you can change anything you like: Starting from 
+schema name and ending with the column type. So First of all, lets declare some schema name, 
+table names and its columns and types: 
 
-# Those are Structure for Database which can be changed. There are Table names, Column names, Schema names
-# and e.t.c
-
-"""
-    Those File is for Database Implementation. You can edit Schema name, column names,
-    table names and e.t.c, but please do not change the order of columns.
-    
-    It also inserts data in Database, you can choose write the file path in
-    file_name variable.
-    
-    For Successful connection you have to make sure that parameters of database
-    is entered correctly in database.ini
-"""
-
+``` bash
 schema_name = 'retail_data'  # Schema Name
 
 # Table Names Which has to be created in Schema
@@ -32,11 +21,20 @@ product_columns = [['stock_code', 'varchar(20)'], ['description', 'varchar(250)'
 # Invoice_Product Table Column Names
 invoice_product_columns = [['invoice_no', 'varchar(7)'], ['stock_code', 'varchar(20)'],
                            ['quantity', 'numeric(8)']]
+```
 
+As you can see everything we need to create database is declared there. 
+Now we will also define the source file of the data, which would be imported to database lately.
+
+
+``` bash
 # File name from which data has to be read
 file_name = "data/shortData/online_retail_II.xlsx"
+```
 
+Now lets define the class with consturctor: 
 
+```bash
 class Database:
     def __init__(self,config_path):
         # Class Constructor
@@ -60,12 +58,27 @@ class Database:
 
         except psycopg2.Error as err:
             print(f'Connection Error: {err}')
+```
 
-    def select(self, query):
-        # Execute select in database
-        self.curs.execute(query)
-        return self.curs.fetchall()
+As you can see it is an simple functions and simple queries. We will talk about
+configs a little later. If you wonder why I am checking the existence of the schema
+I will answer you, because in ```self.initialize_database()``` in that part if 
+database has not initialized yet we we are importing data to it. But if it is already 
+created we are skipping step of importing.
 
+This Class has few function and those are:
+```select_query(self, query), initialize_database(self), add_data_from_file(self) ```
+
+Now lets see how ```select_query(self, query)``` looks like: 
+
+```bash
+def select(self, query):
+    # Execute select in database
+    self.curs.execute(query)
+    return self.curs.fetchall()
+```
+As I said it is simple function. Now lets see how ```initialize_database(self)``` looks like:
+```bash
     def initialize_database(self):
 
         # Create Schema and Tables
@@ -99,7 +112,12 @@ class Database:
         self.conn.commit()  # Commit Changes
 
         self.add_data_from_file()  # Add Data in Database
+```
 
+We are creating schema with all its tables and connections with the given names and order.
+
+This function calls ```add_data_from_file()``` function and now we will see how it looks like: 
+```bash
     def add_data_from_file(self):
         data = pd.read_excel(file_name,
                              parse_dates=['InvoiceDate'],
@@ -150,3 +168,52 @@ class Database:
 
         except psycopg2.Error as err:
             print(err)
+
+```
+
+As you can see we are reading the data from excel file , we are parsing dates, and converting 
+**Stock Code**, **Invoice** and **Customer ID** into string because some of them have some letters
+in them. After there we always check if that type of data is already created or not in database, if there
+is not any data with this ID, we will insert int, It also goes with the products too. 
+
+Now we will return to configuration. 
+We have ```config.py``` file created in our project which reads database parameters, parse it and returns
+to Database class to connect.
+
+The implementation of the config is like this: 
+```bash
+def config(filename, section='postgresql'):
+    # create a parser
+    parser = ConfigParser()
+    # read config file
+    parser.read(filename)
+
+    # get section, default to postgres
+    db = {}
+
+    # Checks to see if section (postgres) parser exists
+    if parser.has_section(section):
+        params = parser.items(section)
+        for param in params:
+            db[param[0]] = param[1]
+
+    # Returns an error if a parameter is called that is not listed in the initialization file
+    else:
+        raise Exception('Section {0} not found in the {1} file'.format(section, filename))
+
+    return db
+```
+I think everything is understandable there except database.ini file structure. Now I will show you 
+the structure of it: 
+
+```bash
+[postgresql]
+host=localhost
+database=postgres
+user=postgres
+password=password
+```
+
+It has easiest structure you can imagine. So this is everything you can need to 
+understand how this class works and you can freely change anything you want and it will
+adapt to your changes. 

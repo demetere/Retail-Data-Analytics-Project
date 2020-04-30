@@ -1,3 +1,4 @@
+pandas
 # external requirements
 
 pandas>==0.23.3
