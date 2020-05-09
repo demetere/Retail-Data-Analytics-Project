@@ -11,10 +11,11 @@ from models.regression.prophet_model.prophet_model import prophet_model
     configure database, which will automatically add data 
 """
 def main():
+    relative_path_of_config = 'database/database.ini'
 
-    classification_model('database/database.ini')
-    prophet_model('database/database.ini')
-    arima_model('database/database.ini')
+    classification_model(relative_path_of_config)
+    prophet_model(relative_path_of_config)
+    arima_model(relative_path_of_config)
 
 if __name__ == '__main__':
     main()
